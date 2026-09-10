@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - PostureGuard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <h2>🪑 PostureGuard</h2>
+            </div>
+            <div class="nav-menu">
+                <a href="/">Home</a>
+                <a href="/login">Login</a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <div class="auth-container">
+            <div class="auth-card">
+                <h1>Create Account 🚀</h1>
+                <p class="auth-subtitle">Start your journey to better posture today</p>
+                
+                <div id="errorMessage" style="display: none;" class="alert alert-danger"></div>
+                
+                <form id="signupForm" class="auth-form">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" required placeholder="Choose a username" minlength="3">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" required placeholder="your@email.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" required minlength="6" placeholder="Min. 6 characters">
+                    </div>
+                    
+                    <button type="submit" class="btn-primary">
+                        ✨ Create Account
+                    </button>
+                </form>
+                
+                <p class="auth-footer">
+                    Already have an account? <a href="/login">Login here</a>
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 PostureGuard. Helping you maintain healthy sitting posture. 💪</p>
+    </footer>
+
+    <script>
+    document.getElementById('signupForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const errorDiv = document.getElementById('errorMessage');
+        errorDiv.style.display = 'none';
+        
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = '⏳ Creating account...';
+        submitBtn.disabled = true;
+        
+        const formData = {
+            username: document.getElementById('username').value,
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value
+        };
+        
+        try {
+            const response = await fetch('/auth/signup', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(formData)
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                localStorage.setItem('token', data.access_token);
+                submitBtn.textContent = '✅ Account created!';
+                window.location.href = '/dashboard';
+            } else {
+                errorDiv.textContent = data.detail || 'Signup failed';
+                errorDiv.style.display = 'block';
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        } catch (error) {
+            errorDiv.textContent = 'Signup error: ' + error.message;
+            errorDiv.style.display = 'block';
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+        }
+    });
+    </script>
+</body>
+</html>

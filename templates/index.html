@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PostureGuard - AI Posture Detection</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <h2>🪑 PostureGuard</h2>
+            </div>
+            <div class="nav-menu" id="navMenu">
+                <a href="/">Home</a>
+                <a href="/dashboard">Dashboard</a>
+                <a href="/login">Login</a>
+                <a href="/signup">Sign Up</a>
+            </div>
+            <div class="nav-toggle" onclick="toggleMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <div class="hero-section">
+            <div class="hero-content">
+                <h1 class="hero-title">Monitor Your Sitting Posture</h1>
+                <p class="hero-subtitle">AI-powered posture detection to help you maintain healthy sitting habits and prevent back pain</p>
+                <div class="hero-buttons">
+                    <a href="/signup" class="btn-primary">Get Started Free</a>
+                    <a href="/login" class="btn-secondary">Sign In</a>
+                </div>
+            </div>
+            
+            <div class="features">
+                <div class="feature-card">
+                    <div class="feature-icon">📷</div>
+                    <h3>Image Analysis</h3>
+                    <p>Upload images for instant posture analysis with detailed feedback</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎥</div>
+                    <h3>Video Processing</h3>
+                    <p>Analyze entire videos for posture patterns and trends over time</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔹</div>
+                    <h3>Live Monitoring</h3>
+                    <p>Real-time webcam posture detection with instant visual feedback</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Analytics Dashboard</h3>
+                    <p>Track your posture improvement over time with detailed statistics</p>
+                </div>
+            </div>
+            
+            <div style="margin-top: 4rem; text-align: center;">
+                <h2 style="color: white; font-size: 2.5rem; margin-bottom: 2rem;">
+                    Why Good Posture Matters?
+                </h2>
+                <div class="features">
+                    <div class="feature-card">
+                        <div class="feature-icon">💪</div>
+                        <h3>Prevent Back Pain</h3>
+                        <p>Maintain proper spinal alignment to reduce chronic back pain</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">⚡</div>
+                        <h3>Boost Energy</h3>
+                        <p>Better posture improves breathing and increases energy levels</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🧠</div>
+                        <h3>Enhance Focus</h3>
+                        <p>Proper posture helps improve concentration and productivity</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">😊</div>
+                        <h3>Look Confident</h3>
+                        <p>Good posture projects confidence and professionalism</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 PostureGuard. Helping you maintain healthy sitting posture. 💪</p>
+    </footer>
+
+    <script>
+    function toggleMenu() {
+        const menu = document.getElementById('navMenu');
+        menu.classList.toggle('active');
+    }
+
+    document.addEventListener('click', (event) => {
+        const menu = document.getElementById('navMenu');
+        const toggle = document.querySelector('.nav-toggle');
+        
+        if (menu && toggle && !menu.contains(event.target) && !toggle.contains(event.target)) {
+            menu.classList.remove('active');
+        }
+    });
+    </script>
+</body>
+</html>

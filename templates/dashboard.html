@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - PostureGuard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <h2>🪑 PostureGuard</h2>
+            </div>
+            <div class="nav-menu">
+                <a href="/dashboard">Dashboard</a>
+                <a href="#" onclick="logout()">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <div class="dashboard-container">
+            <h1>🪑 Posture Detection Dashboard</h1>
+            
+            <div class="detection-modes">
+                <div class="mode-card" onclick="showMode('image')">
+                    <h3>📷 Image Detection</h3>
+                    <p>Upload and analyze images</p>
+                </div>
+                <div class="mode-card" onclick="showMode('video')">
+                    <h3>🎥 Video Detection</h3>
+                    <p>Process video files</p>
+                </div>
+                <div class="mode-card" onclick="showMode('live')">
+                    <h3>📹 Live Detection</h3>
+                    <p>Real-time webcam monitoring</p>
+                </div>
+            </div>
+            
+            <!-- IMAGE MODE -->
+            <div id="imageMode" class="detection-panel" style="display:none;">
+                <h2>📷 Image Detection</h2>
+                <p style="margin-bottom: 1rem; color: #6b7280;">Upload an image to detect your sitting posture</p>
+                
+                <div id="imageError" style="display: none; padding: 1rem; background: #fee; border-left: 4px solid #f44; margin: 1rem 0; border-radius: 8px; color: #c33;"></div>
+                
+                <input type="file" id="imageInput" accept="image/*">
+                <button onclick="detectImage()" class="btn-primary">Detect Posture</button>
+                <div id="imageResult" class="result-container"></div>
+            </div>
+            
+            <!-- VIDEO MODE -->
+            <div id="videoMode" class="detection-panel" style="display:none;">
+                <h2>🎥 Video Detection</h2>
+                <p style="margin-bottom: 1rem; color: #6b7280;">Upload a video to analyze posture throughout the recording</p>
+                
+                <div id="videoError" style="display: none; padding: 1rem; background: #fee; border-left: 4px solid #f44; margin: 1rem 0; border-radius: 8px; color: #c33;"></div>
+                
+                <input type="file" id="videoInput" accept="video/*">
+                <button onclick="detectVideo()" class="btn-primary">Process Video</button>
+                <div id="videoResult" class="result-container"></div>
+                <div id="videoProgress"></div>
+            </div>
+            
+            <!-- LIVE MODE -->
+            <div id="liveMode" class="detection-panel" style="display:none;">
+                <h2>📹 Live Detection</h2>
+                <p style="margin-bottom: 1rem; color: #6b7280;">Monitor your posture in real-time using your webcam</p>
+                
+                <!-- Performance Settings -->
+                <div style="background: #f3f4f6; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <h4 style="margin: 0 0 0.5rem 0; color: #374151;">⚙️ Performance Settings</h4>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="checkbox" id="performanceMode" checked onchange="updatePerformanceSettings()">
+                            <span>Performance Mode (Lower quality, smoother on slow devices)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.5rem;">
+                            FPS: 
+                            <select id="fpsSelect" onchange="updatePerformanceSettings()">
+                                <option value="500">2 FPS (Recommended)</option>
+                                <option value="333">3 FPS</option>
+                                <option value="200">5 FPS</option>
+                                <option value="100">10 FPS</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-bottom: 1.5rem;">
+                    <button onclick="startLive()" class="btn-primary" id="startLiveBtn">
+                        🎬 Start Camera
+                    </button>
+                    <button onclick="stopLive()" class="btn-danger" id="stopLiveBtn" style="display:none;">
+                        ⏹️ Stop Camera
+                    </button>
+                </div>
+                
+                <div class="live-container">
+                    <div>
+                        <h3 style="text-align: center; margin-bottom: 1rem; color: var(--dark);">
+                            📸 Camera Feed with Guide
+                        </h3>
+                        <div class="video-wrapper">
+                            <video id="webcam" autoplay playsinline muted></video>
+                            <canvas id="guideCanvas"></canvas>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 style="text-align: center; margin-bottom: 1rem; color: var(--dark);">
+                            🎯 Detection Result
+                        </h3>
+                        <canvas id="liveCanvas"></canvas>
+                    </div>
+                </div>
+                
+                <div id="liveResult" style="margin-top: 2rem;"></div>
+            </div>
+            
+            <!-- ANALYTICS -->
+            <div class="analytics-section">
+                <h2>📊 Your Analytics</h2>
+                <p style="text-align: center; color: #6b7280; margin-bottom: 2rem;">
+                    Track your posture improvement over the last 7 days
+                </p>
+                <div id="analyticsData" class="analytics-grid"></div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 PostureGuard. Helping you maintain healthy sitting posture. 💪</p>
+    </footer>
+
+    <!-- Hidden audio element for alert sound -->
+    <audio id="alertAudio" preload="auto">
+        <source src="/static/alert.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+    let liveStream = null;
+    let websocket = null;
+    let animationFrame = null;
+    let badPostureStartTime = null;
+    let badPostureCount = 0;
+    let alertShown = false;
+    let frameInterval = 500; // Default 2 FPS for performance
+    let performanceMode = true;
+    
+    // Play custom alert sound
+    function playAlertSound() {
+        const audio = document.getElementById('alertAudio');
+        audio.currentTime = 0;
+        audio.play().catch(err => console.log('Audio play failed:', err));
+    }
+    
+    function updatePerformanceSettings() {
+        performanceMode = document.getElementById('performanceMode').checked;
+        frameInterval = parseInt(document.getElementById('fpsSelect').value);
+    }
+    
+    function showPostureAlert() {
+        // Create custom alert overlay
+        const alertDiv = document.createElement('div');
+        alertDiv.id = 'postureAlert';
+        alertDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            padding: 2rem 3rem;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(239, 68, 68, 0.5);
+            z-index: 10000;
+            text-align: center;
+            animation: alertPulse 0.5s ease-in-out;
+            max-width: 400px;
+        `;
+        
+        alertDiv.innerHTML = `
+            <div style="font-size: 4rem; margin-bottom: 1rem;">⚠️</div>
+            <h2 style="margin: 0 0 1rem 0; font-size: 1.8rem;">Bad Posture Alert!</h2>
+            <p style="margin: 0 0 1.5rem 0; font-size: 1.1rem;">
+                You've been sitting with bad posture for more than 10 seconds.
+                Please adjust your position!
+            </p>
+            <button onclick="dismissAlert()" style="
+                background: white;
+                color: #ef4444;
+                border: none;
+                padding: 0.75rem 2rem;
+                border-radius: 8px;
+                font-size: 1rem;
+                font-weight: bold;
+                cursor: pointer;
+                transition: all 0.3s;
+            ">Got it! 👍</button>
+        `;
+        
+        // Add animation keyframes
+        if (!document.getElementById('alertStyles')) {
+            const style = document.createElement('style');
+            style.id = 'alertStyles';
+            style.textContent = `
+                @keyframes alertPulse {
+                    0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+                    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+                }
+                #postureAlert button:hover {
+                    transform: scale(1.05);
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(alertDiv);
+        
+        // Play custom alert sound
+        playAlertSound();
+        
+        // Vibrate if supported
+        if ('vibrate' in navigator) {
+            navigator.vibrate([200, 100, 200]);
+        }
+    }
+    
+    function dismissAlert() {
+        const alert = document.getElementById('postureAlert');
+        if (alert) {
+            alert.style.animation = 'none';
+            alert.style.opacity = '0';
+            setTimeout(() => alert.remove(), 300);
+        }
+        alertShown = false;
+    }
+
+    function logout() {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+    }
+
+    function showMode(mode) {
+        document.querySelectorAll('.detection-panel').forEach(panel => {
+            panel.style.display = 'none';
+        });
+        document.getElementById(mode + 'Mode').style.display = 'block';
+    }
+
+    async function detectImage() {
+        const input = document.getElementById('imageInput');
+        const errorDiv = document.getElementById('imageError');
+        errorDiv.style.display = 'none';
+        
+        if (!input.files[0]) {
+            errorDiv.textContent = 'Please select an image';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', input.files[0]);
+        
+        try {
+            const response = await fetch('/api/detect/image', {
+                method: 'POST',
+                headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`},
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                errorDiv.textContent = 'Detection failed: ' + (data.detail || 'Unknown error');
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            if (!data.detections || !Array.isArray(data.detections)) {
+                errorDiv.textContent = 'Invalid response from server';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            let html = `<img src="${data.annotated_image}" alt="Detected Image">`;
+            html += '<div class="detections-list">';
+            
+            if (data.detections.length === 0) {
+                html += '<p>No posture detected in the image.</p>';
+            } else {
+                data.detections.forEach((det, idx) => {
+                    html += `
+                        <div class="detection-result ${det.class}">
+                            <strong>Detection ${idx + 1}:</strong> 
+                            ${det.class.toUpperCase()} 
+                            (${(det.confidence * 100).toFixed(1)}% confidence)
+                        </div>
+                    `;
+                });
+            }
+            html += '</div>';
+            
+            document.getElementById('imageResult').innerHTML = html;
+            loadAnalytics();
+        } catch (error) {
+            errorDiv.textContent = 'Detection failed: ' + error.message;
+            errorDiv.style.display = 'block';
+        }
+    }
+
+    async function detectVideo() {
+        const input = document.getElementById('videoInput');
+        const errorDiv = document.getElementById('videoError');
+        errorDiv.style.display = 'none';
+        
+        if (!input.files[0]) {
+            errorDiv.textContent = 'Please select a video';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
+        document.getElementById('videoProgress').innerHTML = '<p>Processing video... This may take a while.</p>';
+        
+        const formData = new FormData();
+        formData.append('file', input.files[0]);
+        
+        try {
+            const response = await fetch('/api/detect/video', {
+                method: 'POST',
+                headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`},
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                errorDiv.textContent = 'Video processing failed: ' + (data.detail || 'Unknown error');
+                errorDiv.style.display = 'block';
+                document.getElementById('videoProgress').innerHTML = '';
+                return;
+            }
+            
+            let html = `
+                <div class="video-result">
+                    <h3>Video Processing Complete</h3>
+                    <p>Total Frames: ${data.result.total_frames}</p>
+                    <p>Good Posture Detections: ${data.result.good_posture}</p>
+                    <p>Bad Posture Detections: ${data.result.bad_posture}</p>
+                    <a href="${data.download_url}" class="btn-primary" download>Download Processed Video</a>
+                </div>
+            `;
+            
+            document.getElementById('videoResult').innerHTML = html;
+            document.getElementById('videoProgress').innerHTML = '';
+            loadAnalytics();
+        } catch (error) {
+            errorDiv.textContent = 'Video processing failed: ' + error.message;
+            errorDiv.style.display = 'block';
+            document.getElementById('videoProgress').innerHTML = '';
+        }
+    }
+
+    function drawStencilGuide(canvas) {
+        const ctx = canvas.getContext('2d');
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        
+        const stencilWidth = canvas.width * 0.4;
+        const stencilHeight = canvas.height * 0.7;
+        const stencilX = centerX - stencilWidth / 2;
+        const stencilY = centerY - stencilHeight / 2;
+        
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.clearRect(stencilX, stencilY, stencilWidth, stencilHeight);
+        
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([10, 5]);
+        ctx.strokeRect(stencilX, stencilY, stencilWidth, stencilHeight);
+        ctx.setLineDash([]);
+        
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 2;
+        
+        const headRadius = stencilWidth * 0.15;
+        const headY = stencilY + stencilHeight * 0.2;
+        ctx.beginPath();
+        ctx.arc(centerX, headY, headRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        const shoulderY = headY + headRadius + 20;
+        const shoulderWidth = stencilWidth * 0.6;
+        ctx.beginPath();
+        ctx.moveTo(centerX - shoulderWidth/2, shoulderY);
+        ctx.lineTo(centerX + shoulderWidth/2, shoulderY);
+        ctx.stroke();
+        
+        const torsoBottom = stencilY + stencilHeight * 0.85;
+        ctx.beginPath();
+        ctx.moveTo(centerX - shoulderWidth/2 + 10, shoulderY);
+        ctx.lineTo(centerX - stencilWidth * 0.15, torsoBottom);
+        ctx.moveTo(centerX + shoulderWidth/2 - 10, shoulderY);
+        ctx.lineTo(centerX + stencilWidth * 0.15, torsoBottom);
+        ctx.stroke();
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 20px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Position yourself within the guide', centerX, stencilY - 30);
+        
+        ctx.font = '16px Arial';
+        ctx.fillText('Sit upright and face the camera', centerX, stencilY - 10);
+    }
+
+    async function startLive() {
+        try {
+            badPostureStartTime = null;
+            badPostureCount = 0;
+            alertShown = false;
+            
+            // Use lower resolution for better performance
+            const videoConstraints = performanceMode ? {
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+                facingMode: 'user'
+            } : {
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                facingMode: 'user'
+            };
+            
+            liveStream = await navigator.mediaDevices.getUserMedia({ 
+                video: videoConstraints
+            });
+            
+            const video = document.getElementById('webcam');
+            video.srcObject = liveStream;
+            
+            await new Promise((resolve) => {
+                video.onloadedmetadata = () => {
+                    video.play().then(() => {
+                        setTimeout(() => {
+                            const guideCanvas = document.getElementById('guideCanvas');
+                            guideCanvas.width = video.videoWidth;
+                            guideCanvas.height = video.videoHeight;
+                            
+                            video.style.width = '100%';
+                            video.style.height = 'auto';
+                            
+                            drawStencilGuide(guideCanvas);
+                            resolve();
+                        }, 500);
+                    });
+                };
+            });
+            
+            document.getElementById('startLiveBtn').style.display = 'none';
+            document.getElementById('stopLiveBtn').style.display = 'inline-block';
+            
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            websocket = new WebSocket(`${protocol}//${window.location.host}/api/detect/live`);
+            
+            websocket.onopen = () => {
+                console.log('WebSocket connected');
+                sendFrame();
+            };
+            
+            websocket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                const canvas = document.getElementById('liveCanvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                
+                img.onload = () => {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                };
+                img.src = data.annotated_image;
+                
+                let html = '';
+                
+                if (data.detections && data.detections.length > 0) {
+                    const mainDetection = data.detections[0];
+                    const isGood = mainDetection.class === 'good';
+                    const confidence = (mainDetection.confidence * 100).toFixed(1);
+                    
+                    // Track bad posture and trigger alert after 10 seconds
+                    if (!isGood) {
+                        if (badPostureStartTime === null) {
+                            badPostureStartTime = Date.now();
+                        }
+                        badPostureCount++;
+                        
+                        // Check if bad posture has lasted for more than 10 seconds
+                        const duration = (Date.now() - badPostureStartTime) / 1000;
+                        if (duration >= 10 && !alertShown) {
+                            showPostureAlert();
+                            alertShown = true;
+                        }
+                    } else {
+                        badPostureStartTime = null;
+                        badPostureCount = 0;
+                    }
+                    
+                    html += '<h3 style="margin-top: 2rem;">All Detections:</h3>';
+                    data.detections.forEach((det, idx) => {
+                        html += `
+                            <div class="detection-result ${det.class}">
+                                <strong>Detection ${idx + 1}:</strong> 
+                                ${det.class.toUpperCase()} - ${(det.confidence * 100).toFixed(1)}%
+                            </div>
+                        `;
+                    });
+                } else {
+                    badPostureStartTime = null;
+                    badPostureCount = 0;
+                }
+                
+                document.getElementById('liveResult').innerHTML = html;
+            };
+            
+            websocket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                stopLive();
+            };
+            
+            websocket.onclose = () => {
+                console.log('WebSocket closed');
+            };
+            
+        } catch (error) {
+            console.error('Camera access error:', error);
+        }
+    }
+
+    function sendFrame() {
+        if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+            return;
+        }
+        
+        const video = document.getElementById('webcam');
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+            const canvas = document.createElement('canvas');
+            
+            // Use smaller resolution for processing in performance mode
+            if (performanceMode) {
+                canvas.width = video.videoWidth / 2;
+                canvas.height = video.videoHeight / 2;
+            } else {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+            }
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Lower JPEG quality for better performance
+            const quality = performanceMode ? 0.5 : 0.8;
+            const dataUrl = canvas.toDataURL('image/jpeg', quality);
+            websocket.send(dataUrl);
+        }
+        
+        // Use variable frame interval based on settings
+        animationFrame = setTimeout(sendFrame, frameInterval);
+    }
+
+    function stopLive() {
+        badPostureStartTime = null;
+        badPostureCount = 0;
+        alertShown = false;
+        
+        if (liveStream) {
+            liveStream.getTracks().forEach(track => track.stop());
+            liveStream = null;
+        }
+        if (websocket) {
+            websocket.close();
+            websocket = null;
+        }
+        if (animationFrame) {
+            clearTimeout(animationFrame);
+            animationFrame = null;
+        }
+        
+        const video = document.getElementById('webcam');
+        video.srcObject = null;
+        
+        const guideCanvas = document.getElementById('guideCanvas');
+        const ctx = guideCanvas.getContext('2d');
+        ctx.clearRect(0, 0, guideCanvas.width, guideCanvas.height);
+        
+        document.getElementById('startLiveBtn').style.display = 'inline-block';
+        document.getElementById('stopLiveBtn').style.display = 'none';
+        document.getElementById('liveResult').innerHTML = '';
+        
+        // Dismiss any active alerts
+        dismissAlert();
+    }
+
+    async function loadAnalytics() {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                return;
+            }
+            
+            const response = await fetch('/api/analytics/summary?days=7', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            if (!response.ok) {
+                return;
+            }
+            
+            const data = await response.json();
+            
+            document.getElementById('analyticsData').innerHTML = `
+                <div class="stat-card">
+                    <h3>${data.total_detections || 0}</h3>
+                    <p>Total Detections</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${data.good_posture || 0}</h3>
+                    <p>Good Posture</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${data.bad_posture || 0}</h3>
+                    <p>Bad Posture</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${(data.good_percentage || 0).toFixed(1)}%</h3>
+                    <p>Good Posture Rate</p>
+                </div>
+            `;
+        } catch (error) {
+            console.error('Failed to load analytics:', error);
+        }
+    }
+
+    // Check auth on load
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = '/login';
+    } else {
+        loadAnalytics();
+    }
+    </script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI-powered posture detection system to help you maintain healthy sitting habits">
+    <title>{% block title %}PostureGuard - AI Posture Detection{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <h2>🪑 PostureGuard</h2>
+            </div>
+            <div class="nav-menu" id="navMenu">
+                {% block nav_links %}
+                <a href="/">Home</a>
+                <a href="/dashboard">Dashboard</a>
+                <a href="/login">Login</a>
+                <a href="/signup">Sign Up</a>
+                {% endblock %}
+            </div>
+            <div class="nav-toggle" onclick="toggleMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <p>&copy; 2025 PostureGuard. Helping you maintain healthy sitting posture. 💪</p>
+    </footer>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
